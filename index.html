@@ -2584,7 +2584,7 @@ requestAnimationFrame(frame);
   hint.textContent = 'DEMO · press SPACE to start · ESC to stop';
   document.body.appendChild(hint);
 
-  var running = false, cx = innerWidth * .62, cy = innerHeight * .7;
+  var running = false, cx = innerWidth * .62, cy = innerHeight * .7, scrollY0;
   /* ignore the real mouse while the demo runs */
   ['pointermove','pointerdown','pointerup','pointerleave','mousemove','click'].forEach(function(t){
     window.addEventListener(t, function(e){ if(running && e.isTrusted){ e.stopImmediatePropagation(); if(t !== 'pointermove' && t !== 'mousemove') e.preventDefault(); } }, true);
@@ -2649,10 +2649,10 @@ requestAnimationFrame(frame);
     if(lit){ var q2 = lit.getBoundingClientRect(); await move(q2.left + q2.width / 2, q2.top + q2.height / 2, 800); lit.classList.add('lit'); await sleep(1300); lit.classList.remove('lit'); }
     /* phones: slow ride through the pinned scene */
     var bs = document.getElementById('boost'), by = bs.getBoundingClientRect().top + scrollY;
-    await scrollTo2(by - innerHeight * .6, 1500);
-    await move(innerWidth * .55, innerHeight * .55, 600);
     var stopTop = innerHeight * .6 - .55 * (bs.offsetHeight - innerHeight * .4);
-    await scrollTo2(by - stopTop, 6000);
+    /* one continuous glide from the token strips into the phones, cursor drifting along */
+    var gx0 = cx, gy0 = cy;
+    await anim(7000, function(e){ window.scrollTo({top: (scrollY0 = scrollY0 === undefined ? scrollY : scrollY0) + (by - stopTop - scrollY0) * e, behavior: 'instant'}); point(gx0 + (innerWidth * .55 - gx0) * e, gy0 + (innerHeight * .55 - gy0) * e); });
     await path(function(s){ return innerWidth * (.4 + .25 * s); }, function(s){ return innerHeight * (.5 + Math.sin(s * 6.28) * .08); }, 1800);
     /* security: sweep the cursor through the dotted map */
     await scrollTo2(centerOf('security'), 2000);
