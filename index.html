@@ -332,7 +332,7 @@ p,li,label,.txt,.card p,.lcard p,.disc span{text-wrap:pretty}
 .plate{position:absolute;inset:0;border-radius:calc(20 * var(--u));transform-origin:50% 0;
   background:linear-gradient(135deg,rgba(166,254,13,.1),rgba(166,254,13,.025) 55%,rgba(255,255,255,.035));
   -webkit-backdrop-filter:blur(calc(14 * var(--u))) saturate(1.25);backdrop-filter:blur(calc(14 * var(--u))) saturate(1.25);
-  box-shadow:inset 0 0 calc(43 * var(--u)) rgba(160,254,9,.2),inset 0 0 calc(10 * var(--u)) rgba(160,254,9,.2),0 calc(10 * var(--u)) calc(30 * var(--u)) rgba(0,0,0,.35);
+  box-shadow:inset 0 0 calc(43 * var(--u)) rgba(160,254,9,.2),inset 0 0 calc(10 * var(--u)) rgba(160,254,9,.2);
   transition:transform .95s cubic-bezier(.65,0,.25,1),opacity .95s cubic-bezier(.65,0,.25,1),filter .95s cubic-bezier(.65,0,.25,1),background .4s,box-shadow .4s}
 .plate::before{content:"";position:absolute;inset:0;border-radius:inherit;padding:1px;pointer-events:none;
   background:conic-gradient(from 200deg,#fbff36,#8cff00,rgba(140,255,0,.15),#fbff36);
@@ -2557,6 +2557,9 @@ requestAnimationFrame(frame);
     var r = el.getBoundingClientRect(), t = 1e9, btm = -1e9, vh = innerHeight, y;
     [].forEach.call(el.children, function(c){ if(/^(CANVAS|SVG|SCRIPT|STYLE)$/i.test(c.tagName)) return; var q = c.getBoundingClientRect(); if(!q.height) return; t = Math.min(t, q.top); btm = Math.max(btm, q.bottom); });
     if(btm > t) r = {top: t, height: btm - t};
+    /* reveal animations shift elements while hidden: measure where they will settle */
+    function ty(e){ var m = getComputedStyle(e).transform; if(!m || m === 'none') return 0; var v = m.match(/-?[\d.]+/g).map(Number); return v.length === 6 ? v[5] : v[13]; }
+    if(id === 'about'){ var cp = el.querySelector('.cap.rv:not(.lbl):not(.ssf):not(.step)'), cbt = 0; el.querySelectorAll('.cards .card').forEach(function(c){ cbt = Math.max(cbt, c.getBoundingClientRect().bottom - ty(c)); }); if(cp && cbt){ var cpt = cp.getBoundingClientRect().top - ty(cp); r = {top: cpt, height: cbt - cpt}; } }
     if(id === 'hero') y = 0;
     else if(r.height < vh) y = scrollY + r.top - (vh - r.height) / 2;
     else y = scrollY + r.top - 20;
@@ -2629,8 +2632,9 @@ requestAnimationFrame(frame);
     /* about: intro text lights up, chart periods, tooltip, glass plates */
     var ab = document.getElementById('about'), introEl = ab.querySelector('.intro');
     if(introEl){ var ir = introEl.getBoundingClientRect(); await scrollTo2(Math.max(0, scrollY + ir.top - innerHeight * .4), 2200); await sleep(700); }
-    var capEl = ab.querySelector('.cap'), cardsEl = ab.querySelector('.cards');
-    if(capEl && cardsEl){ var ct = capEl.getBoundingClientRect().top, cb = cardsEl.getBoundingClientRect().bottom; [].forEach.call(cardsEl.children, function(c){ cb = Math.max(cb, c.getBoundingClientRect().bottom); });
+    var capEl = ab.querySelector('.cap.rv:not(.lbl):not(.ssf):not(.step)'), cardsEl = ab.querySelector('.cards');
+    if(capEl && cardsEl){ var tyf = function(e){ var m = getComputedStyle(e).transform; if(!m || m === 'none') return 0; var v = m.match(/-?[\d.]+/g).map(Number); return v.length === 6 ? v[5] : v[13]; };
+      var ct = capEl.getBoundingClientRect().top - tyf(capEl), cb = 0; cardsEl.querySelectorAll('.card').forEach(function(c){ cb = Math.max(cb, c.getBoundingClientRect().bottom - tyf(c)); });
       var fitY = cb - ct < innerHeight - 40 ? scrollY + ct - (innerHeight - (cb - ct)) / 2 : scrollY + ct - 60;
       await scrollTo2(Math.max(0, fitY), 1800); }
     var chips = document.querySelectorAll('#about .chip');
