@@ -2684,6 +2684,10 @@ requestAnimationFrame(frame);
     await sleep(1500);
     running = false; document.documentElement.classList.remove('demo-run');
   }
+  /* ?demo=8 starts by itself after an 8-second countdown (handy when the recorder holds keyboard focus) */
+  var auto = parseInt((location.search.match(/[?&]demo=(\d+)/) || [])[1], 10);
+  if(auto > 0){ var left = auto; hint.textContent = 'DEMO starts in ' + left + ' s';
+    var iv = setInterval(function(){ left--; if(running){ clearInterval(iv); return; } if(left <= 0){ clearInterval(iv); run(); } else hint.textContent = 'DEMO starts in ' + left + ' s'; }, 1000); }
   addEventListener('keydown', function(e){
     if(e.code === 'Space' && !running){ e.preventDefault(); run(); }
     if(e.code === 'Escape' && running){ running = false; document.documentElement.classList.remove('demo-run'); }
