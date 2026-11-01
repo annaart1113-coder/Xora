@@ -2533,7 +2533,9 @@ function frame(now){
   gl.uniform2f(U.uL,sx,sy);gl.uniform1f(U.uMode,0);
   OBJ.forEach(function(o){
     if(o.g===1&&!btcReady)return;
-    if(!reduce)o.yaw+=dt*o.spd;
+    /* sway instead of a full turn, so the symbol never shows mirrored from the back */
+    if(o.b===undefined)o.b=o.g?-.3:.3;
+    if(!reduce)o.yaw=o.b+Math.sin(s*Math.abs(o.spd)*1.6+o.ph)*.55;
     var w=Math.round(o.s*k),x=Math.round(o.x*k),y=H-Math.round(o.y*k)-w;
     gl.viewport(x,y,w,w);gl.scissor(x,y,w,w);
     var R=rot(o.yaw+sx*.3,.22+Math.sin(s*.45+o.ph)*.25+sy*.2,Math.sin(s*.35+o.ph)*.25);
