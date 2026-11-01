@@ -187,7 +187,7 @@ nav.menu a:hover::after,nav.menu a:focus-visible::after{right:0}
   *,*::before,*::after{animation:none!important;transition:none!important}
   .stars svg{transform:none}
 }
-.coin-gl{z-index:1!important}.hero .title,.hero #eyebrow{z-index:4}.hero .title .row>span,.hero #eyebrow{color:#fff;filter:drop-shadow(0 0 22px rgba(0,0,0,.4))}</style>
+.coin-gl{z-index:1!important}.hero .title,.hero #eyebrow{z-index:4}.hero .title::before{content:"";position:absolute;left:-8%;right:-8%;top:-12%;bottom:-12%;z-index:-1;pointer-events:none;background:radial-gradient(closest-side,rgba(0,0,0,.42),rgba(0,0,0,.18) 60%,transparent)}.hero .title .row>span,.hero #eyebrow{color:#fff}</style>
 
 <style>
 /* ---------- one continuous background taken from the Figma page (blurred light pools + fine grain) ---------- */
@@ -1410,7 +1410,7 @@ p,h3,.lcard span{text-wrap:pretty}
     var txt = el.textContent.replace(/\s+/g, ' ').trim();
     if(cs.textTransform === 'uppercase') txt = txt.toUpperCase();
     bx.font = cs.fontStyle + ' ' + cs.fontWeight + ' ' + cs.fontSize + ' ' + cs.fontFamily;
-    bx.fillStyle = 'rgba(190,215,255,.34)'; bx.filter = 'blur(1px)';
+    bx.fillStyle = 'rgba(190,215,255,.22)'; bx.filter = 'blur(1px)';
     var m = bx.measureText(txt), asc = m.fontBoundingBoxAscent || parseFloat(cs.fontSize) * .9, des = m.fontBoundingBoxDescent || parseFloat(cs.fontSize) * .25;
     var lh = parseFloat(cs.lineHeight); if(isNaN(lh)) lh = asc + des;
     var y = r.top - hr.top + (lh - asc - des) / 2 + asc;
@@ -1437,7 +1437,7 @@ p,h3,.lcard span{text-wrap:pretty}
       bx.fillStyle = g; bx.beginPath(); bx.arc(0, 0, 1, 0, Math.PI * 2); bx.fill(); bx.restore();
     });
     bx.globalCompositeOperation = 'source-over';
-    var eb = document.getElementById('eyebrow'); if(eb) drawText(eb);
+    /* the small eyebrow line is not reflected: its ghost under the real text hurt legibility */
     document.querySelectorAll('.title .row > span').forEach(function(s){ drawText(s); });
     document.querySelectorAll('nav.menu a').forEach(function(a){ drawText(a); });
     gl.bindTexture(gl.TEXTURE_2D, tex);
@@ -2543,5 +2543,139 @@ function frame(now){
   });
 }
 requestAnimationFrame(frame);
+})();
+</script>
+<script>
+/* in-page links: glide to the section and centre it in the screen (tall sections start just below the top) */
+(function(){
+  document.addEventListener('click', function(e){
+    var a = e.target.closest && e.target.closest('a[href^="#"]'); if(!a) return;
+    var id = a.getAttribute('href').slice(1); if(!id) return;
+    var el = document.getElementById(id); if(!el) return;
+    e.preventDefault();
+    /* measure the visible content (heading to last block), not the section's padding */
+    var r = el.getBoundingClientRect(), t = 1e9, btm = -1e9, vh = innerHeight, y;
+    [].forEach.call(el.children, function(c){ if(/^(CANVAS|SVG|SCRIPT|STYLE)$/i.test(c.tagName)) return; var q = c.getBoundingClientRect(); if(!q.height) return; t = Math.min(t, q.top); btm = Math.max(btm, q.bottom); });
+    if(btm > t) r = {top: t, height: btm - t};
+    if(id === 'hero') y = 0;
+    else if(r.height < vh) y = scrollY + r.top - (vh - r.height) / 2;
+    else y = scrollY + r.top - 20;
+    var reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    scrollTo({top: Math.max(0, y), behavior: reduce ? 'auto' : 'smooth'});
+    if(history.replaceState) history.replaceState(null, '', '#' + id);
+  });
+})();
+</script>
+<script>
+/* Demo mode for screen recording: open the site with ?demo, press Space.
+   The page scrolls itself smoothly and a scripted cursor plays with every effect. Esc stops. */
+(function(){
+  if(!/[?&]demo\b/.test(location.search)) return;
+  var css = document.createElement('style');
+  css.textContent = '.demo-hint{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:99999;padding:12px 18px;border-radius:12px;background:rgba(0,0,0,.75);border:1px solid rgba(166,254,13,.4);color:#fff;font:500 14px/1.3 Manrope,system-ui,sans-serif;letter-spacing:.04em;pointer-events:none}'
+    + 'html.demo-run,html.demo-run *{cursor:none!important}'
+    + '.stat5.dh{background:rgba(166,254,13,.045);box-shadow:inset 0 0 calc(60 * var(--u)) rgba(166,254,13,.07)}.stat5.dh::after{border-color:rgba(166,254,13,.25)}'
+    + '.store.dh{filter:brightness(1.12);transform:translateY(-2px)}';
+  document.head.appendChild(css);
+  var hint = document.createElement('div'); hint.className = 'demo-hint';
+  hint.textContent = 'DEMO · press SPACE to start · ESC to stop';
+  document.body.appendChild(hint);
+
+  var running = false, cx = innerWidth * .62, cy = innerHeight * .7;
+  /* ignore the real mouse while the demo runs */
+  ['pointermove','pointerdown','pointerup','pointerleave','mousemove','click'].forEach(function(t){
+    window.addEventListener(t, function(e){ if(running && e.isTrusted){ e.stopImmediatePropagation(); if(t !== 'pointermove' && t !== 'mousemove') e.preventDefault(); } }, true);
+  });
+  document.addEventListener('pointerleave', function(e){ if(running && e.isTrusted) e.stopImmediatePropagation(); }, true);
+
+  function sleep(ms){ return new Promise(function(r){ setTimeout(r, ms); }); }
+  function ease(t){ return t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2; }
+  function fire(type, x, y, target){
+    var el = target || document.elementFromPoint(x, y) || document.body;
+    var o = {bubbles: true, cancelable: true, clientX: x, clientY: y, pointerId: 1, pointerType: 'mouse', isPrimary: true, buttons: type === 'pointermove' && fire.down ? 1 : 0};
+    el.dispatchEvent(new PointerEvent(type, o));
+    if(type === 'pointermove') el.dispatchEvent(new MouseEvent('mousemove', o));
+    return el;
+  }
+  var lastEl = null;
+  function point(x, y){
+    cx = x; cy = y;
+    var el = fire('pointermove', x, y);
+    if(el !== lastEl){ if(lastEl) lastEl.dispatchEvent(new PointerEvent('pointerleave', {pointerType: 'mouse'})); el.dispatchEvent(new PointerEvent('pointerenter', {pointerType: 'mouse'})); lastEl = el; }
+  }
+  function anim(dur, fn){ return new Promise(function(res){ var t0 = performance.now();
+    (function f(now){ if(!running) return res(); var t = Math.min(1, (now - t0) / dur); fn(ease(t), t); if(t < 1) requestAnimationFrame(f); else res(); })(t0); }); }
+  function move(x, y, dur){ var x0 = cx, y0 = cy; return anim(dur, function(e){ point(x0 + (x - x0) * e, y0 + (y - y0) * e); }); }
+  function path(fx, fy, dur){ return anim(dur, function(e, t){ point(fx(t), fy(t)); }); }
+  function scrollTo2(y, dur){ var y0 = scrollY; return anim(dur, function(e){ window.scrollTo({top: y0 + (y - y0) * e, behavior: 'instant'}); point(cx, cy); }); }
+  function centerOf(id){
+    var el = document.getElementById(id), r = el.getBoundingClientRect(), t = 1e9, b = -1e9, vh = innerHeight;
+    [].forEach.call(el.children, function(c){ if(/^(CANVAS|SVG|SCRIPT|STYLE)$/i.test(c.tagName)) return; var q = c.getBoundingClientRect(); if(!q.height) return; t = Math.min(t, q.top); b = Math.max(b, q.bottom); });
+    if(b > t) r = {top: t, height: b - t};
+    return Math.max(0, r.height < vh ? scrollY + r.top - (vh - r.height) / 2 : scrollY + r.top - 20);
+  }
+  function rc(sel, i){ var l = document.querySelectorAll(sel); var el = l[i || 0]; return el ? el.getBoundingClientRect() : null; }
+  async function click(el){ if(!el || !running) return; var r = el.getBoundingClientRect(); await move(r.left + r.width / 2, r.top + r.height / 2, 600); fire('pointerdown', cx, cy); await sleep(90); fire('pointerup', cx, cy); el.click(); await sleep(250); }
+
+  async function run(){
+    running = true; hint.remove(); document.documentElement.classList.add('demo-run');
+    window.scrollTo({top: 0, behavior: 'instant'}); point(cx, cy); await sleep(1600);
+    /* hero: hover the X so it opens, then grab and spin it */
+    var t = document.querySelector('.title').getBoundingClientRect(), xc = t.left + t.width / 2, yc = t.top + t.height * .56;
+    await move(xc + 60, yc + 30, 1100);
+    await path(function(s){ return xc + Math.cos(s * 6.28) * 140; }, function(s){ return yc + Math.sin(s * 6.28) * 70; }, 2400);
+    fire.down = true; fire('pointerdown', cx, cy); await move(cx + 320, cy + 10, 900); fire('pointerup', cx, cy); fire.down = false;
+    await sleep(1800);
+    /* about: intro text lights up, chart periods, tooltip, glass plates */
+    await scrollTo2(centerOf('about') - innerHeight * .25, 2200); await sleep(500);
+    await scrollTo2(centerOf('about') + innerHeight * .05, 1600);
+    var chips = document.querySelectorAll('#about .chip');
+    if(chips.length){ await click(chips[0]); await sleep(600); await click(chips[2]); await sleep(600); await click(chips[3]); }
+    var ch = rc('#about .chart');
+    if(ch){ await move(ch.left + ch.width * .15, ch.top + ch.height * .55, 700); await move(ch.left + ch.width * .85, ch.top + ch.height * .5, 2200); }
+    var st = rc('#about .stack'); if(st){ await move(st.left + st.width * .5, st.top + st.height * .45, 900); await sleep(1200); }
+    /* token strips */
+    await scrollTo2(centerOf('feed'), 1600);
+    var tiles = document.querySelectorAll('#feed .tile'), lit = null;
+    for(var i = 0; i < tiles.length; i++){ var q = tiles[i].getBoundingClientRect(); if(q.left > innerWidth * .4 && q.right < innerWidth * .7){ lit = tiles[i]; break; } }
+    if(lit){ var q2 = lit.getBoundingClientRect(); await move(q2.left + q2.width / 2, q2.top + q2.height / 2, 800); lit.classList.add('lit'); await sleep(1300); lit.classList.remove('lit'); }
+    /* phones: slow ride through the pinned scene */
+    var bs = document.getElementById('boost'), by = bs.getBoundingClientRect().top + scrollY;
+    await scrollTo2(by - innerHeight * .6, 1500);
+    await move(innerWidth * .55, innerHeight * .55, 600);
+    await scrollTo2(by + bs.offsetHeight - innerHeight, 7000);
+    await path(function(s){ return innerWidth * (.4 + .25 * s); }, function(s){ return innerHeight * (.5 + Math.sin(s * 6.28) * .08); }, 1800);
+    /* security: sweep the cursor through the dotted map */
+    await scrollTo2(centerOf('security'), 2000);
+    var sec = document.getElementById('security').getBoundingClientRect();
+    await move(sec.left + sec.width * .15, sec.top + sec.height * .72, 800);
+    await path(function(s){ return sec.left + sec.width * (.15 + .7 * s); }, function(s){ return sec.top + sec.height * (.72 + Math.sin(s * 9.4) * .1); }, 3200);
+    var s5 = document.querySelectorAll('.stat5'); if(s5[1]){ var r5 = s5[1].getBoundingClientRect(); await move(r5.left + r5.width * .5, r5.top + r5.height * .5, 800); s5[1].classList.add('dh'); await sleep(1100); s5[1].classList.remove('dh'); }
+    /* download: crystals follow the cursor */
+    await scrollTo2(centerOf('download'), 1800);
+    await path(function(s){ return innerWidth * (.15 + .7 * s); }, function(s){ return innerHeight * (.55 + Math.sin(s * 6.28) * .15); }, 3000);
+    var stores = document.querySelectorAll('#download .store'); if(stores[0]){ var rs = stores[0].getBoundingClientRect(); await move(rs.left + rs.width / 2, rs.top + rs.height / 2, 700); stores[0].classList.add('dh'); await sleep(900); stores[0].classList.remove('dh'); }
+    /* FAQ: open two answers */
+    await scrollTo2(centerOf('faq'), 1800);
+    var qs = document.querySelectorAll('#faq button[aria-expanded]');
+    if(qs[0]){ await click(qs[0]); await sleep(1600); }
+    if(qs[2]){ await click(qs[2]); await sleep(1600); }
+    /* newsletter: type an e-mail and subscribe */
+    await scrollTo2(centerOf('loop'), 1800);
+    var inp = document.getElementById('sub-mail');
+    if(inp){ await click(inp); inp.focus(); var mail = 'hello@xora.app';
+      for(var k = 1; k <= mail.length && running; k++){ inp.value = mail.slice(0, k); inp.dispatchEvent(new Event('input', {bubbles: true})); await sleep(70 + Math.random() * 60); }
+      await sleep(400); await click(document.querySelector('#subform button')); await sleep(2000); }
+    /* footer: light glides over the glass logo */
+    var fy = document.documentElement.scrollHeight - innerHeight;
+    await scrollTo2(fy, 2000);
+    var fl = rc('.flogo'); if(fl) await path(function(s){ return fl.left + fl.width * (.1 + .8 * s); }, function(s){ return fl.top + fl.height * (.5 + Math.sin(s * 6.28) * .25); }, 3000);
+    await sleep(1500);
+    running = false; document.documentElement.classList.remove('demo-run');
+  }
+  addEventListener('keydown', function(e){
+    if(e.code === 'Space' && !running){ e.preventDefault(); run(); }
+    if(e.code === 'Escape' && running){ running = false; document.documentElement.classList.remove('demo-run'); }
+  });
 })();
 </script>
